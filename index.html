@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Medical Pharmacy Invoice System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Main navigation">
+      <div class="brand-card">
+        <div class="logo-ring">
+          <img id="navLogo" alt="Shop logo" />
+          <span id="logoFallback">Rx</span>
+        </div>
+        <div>
+          <p class="eyebrow">Medical Store</p>
+          <h1 id="navShopName">Medical Pharmacy</h1>
+        </div>
+      </div>
+      <nav>
+        <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+        <button class="nav-btn" data-view="sale">New Sale Invoice</button>
+        <button class="nav-btn" data-view="inventory">Purchase & Stock</button>
+        <button class="nav-btn" data-view="history">Invoice History</button>
+        <button class="nav-btn" data-view="settings">Shop Setup</button>
+      </nav>
+      <div class="sidebar-note">
+        <strong>Static app</strong>
+        <span>Data is saved in this browser with localStorage. Export backup regularly.</span>
+      </div>
+    </aside>
+
+    <main>
+      <header class="top-strip">
+        <section class="store-hero">
+          <div class="hero-logo">
+            <img id="headerLogo" alt="Shop logo" />
+            <span id="headerLogoFallback">Rx</span>
+          </div>
+          <div>
+            <p class="eyebrow">Licensed pharmacy billing desk</p>
+            <h2 id="headerShopName">Medical Pharmacy</h2>
+            <div class="store-meta">
+              <span id="headerLicense">Drug License: Add in setup</span>
+              <span id="headerPhone">Phone: Add in setup</span>
+              <span id="headerAddress">Address: Add in setup</span>
+            </div>
+          </div>
+        </section>
+        <div class="quick-actions">
+          <button class="ghost" id="backupBtn">Export Backup</button>
+          <label class="ghost import-label">
+            Import Backup
+            <input id="importBackup" type="file" accept="application/json" />
+          </label>
+        </div>
+      </header>
+
+      <section class="view active" id="dashboard">
+        <div class="page-title">
+          <div>
+            <p class="eyebrow">Overview</p>
+            <h2>Sales, purchase and inventory summary</h2>
+          </div>
+          <button class="primary" data-go="sale">Create Invoice</button>
+        </div>
+        <div class="metric-grid">
+          <article class="metric">
+            <span>Total Sales</span>
+            <strong id="metricSales">₹0.00</strong>
+          </article>
+          <article class="metric">
+            <span>Total Purchases</span>
+            <strong id="metricPurchases">₹0.00</strong>
+          </article>
+          <article class="metric">
+            <span>Stock Items</span>
+            <strong id="metricItems">0</strong>
+          </article>
+          <article class="metric alert">
+            <span>Low / Expired</span>
+            <strong id="metricAlerts">0</strong>
+          </article>
+        </div>
+        <div class="split-grid">
+          <section class="panel">
+            <div class="panel-head">
+              <h3>Recent invoices</h3>
+              <button class="text-btn" data-go="history">View all</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Invoice</th><th>Customer</th><th>Date</th><th>Total</th></tr></thead>
+                <tbody id="recentInvoices"></tbody>
+              </table>
+            </div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <h3>Stock watch</h3>
+              <button class="text-btn" data-go="inventory">Manage stock</button>
+            </div>
+            <div id="stockWatch" class="watch-list"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="view" id="sale">
+        <div class="page-title">
+          <div>
+            <p class="eyebrow">Sales counter</p>
+            <h2>Create customer bill</h2>
+          </div>
+          <div class="invoice-number" id="invoiceNumber">Invoice #</div>
+        </div>
+        <form id="saleForm" class="invoice-form">
+          <section class="panel form-panel">
+            <h3>Customer and prescription</h3>
+            <div class="form-grid">
+              <label>Customer Name <input id="customerName" required placeholder="Customer full name"></label>
+              <label>Phone Number <input id="customerPhone" placeholder="Mobile number"></label>
+              <label>Aadhaar / ID Number <input id="customerId" placeholder="Optional ID number"></label>
+              <label>Doctor Name <input id="doctorName" placeholder="Prescribing doctor"></label>
+              <label class="wide">Customer Address <textarea id="customerAddress" rows="2" placeholder="House / street / city"></textarea></label>
+            </div>
+          </section>
+
+          <section class="panel form-panel">
+            <div class="panel-head">
+              <h3>Medicines, injections and items</h3>
+              <button type="button" class="secondary" id="addSaleItem">Add Medicine</button>
+            </div>
+            <div class="table-wrap medicine-table">
+              <table>
+                <thead>
+                  <tr><th>Medicine</th><th>Batch</th><th>Expiry</th><th>Qty</th><th>Rate</th><th>GST %</th><th>Amount</th><th></th></tr>
+                </thead>
+                <tbody id="saleItems"></tbody>
+              </table>
+            </div>
+            <div class="totals-card">
+              <label>Discount ₹ <input id="discount" type="number" min="0" step="0.01" value="0"></label>
+              <label>Paid ₹ <input id="paid" type="number" min="0" step="0.01" value="0"></label>
+              <div><span>Subtotal</span><strong id="subtotal">₹0.00</strong></div>
+              <div><span>GST</span><strong id="taxTotal">₹0.00</strong></div>
+              <div class="grand"><span>Grand Total</span><strong id="grandTotal">₹0.00</strong></div>
+              <div><span>Balance</span><strong id="balanceDue">₹0.00</strong></div>
+            </div>
+            <div class="button-row">
+              <button type="button" class="ghost" id="clearSale">Clear</button>
+              <button type="submit" class="primary">Complete Sale</button>
+            </div>
+          </section>
+        </form>
+      </section>
+
+      <section class="view" id="inventory">
+        <div class="page-title">
+          <div>
+            <p class="eyebrow">Purchase section</p>
+            <h2>Add medicines, injections and stock</h2>
+          </div>
+        </div>
+        <section class="panel form-panel">
+          <form id="purchaseForm" class="form-grid">
+            <label>Item Name <input id="itemName" required placeholder="Medicine / injection name"></label>
+            <label>Type
+              <select id="itemType">
+                <option>Medicine</option><option>Injection</option><option>Syrup</option><option>Tablet</option><option>Capsule</option><option>Other</option>
+              </select>
+            </label>
+            <label>Batch <input id="batch" placeholder="Batch number"></label>
+            <label>Expiry <input id="expiry" type="month"></label>
+            <label>Manufacturer <input id="manufacturer" placeholder="Company name"></label>
+            <label>Quantity <input id="quantity" type="number" min="1" value="1" required></label>
+            <label>Purchase Rate ₹ <input id="purchaseRate" type="number" min="0" step="0.01" value="0"></label>
+            <label>Sale Rate ₹ <input id="saleRate" type="number" min="0" step="0.01" value="0" required></label>
+            <label>GST % <input id="gstRate" type="number" min="0" step="0.01" value="0"></label>
+            <button class="primary align-end" type="submit">Add Purchase Stock</button>
+          </form>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h3>Current stock</h3>
+            <input id="stockSearch" class="search" placeholder="Search stock">
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Name</th><th>Type</th><th>Batch</th><th>Expiry</th><th>Stock</th><th>Sale Rate</th><th>Actions</th></tr></thead>
+              <tbody id="stockTable"></tbody>
+            </table>
+          </div>
+        </section>
+        <section class="panel">
+          <div class="panel-head">
+            <h3>Purchase history</h3>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Date</th><th>Item</th><th>Qty</th><th>Purchase Rate</th><th>Total</th></tr></thead>
+              <tbody id="purchaseHistory"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section class="view" id="history">
+        <div class="page-title">
+          <div>
+            <p class="eyebrow">Sales register</p>
+            <h2>Invoice history and reprint</h2>
+          </div>
+          <input id="invoiceSearch" class="search" placeholder="Search invoice / customer / phone">
+        </div>
+        <section class="panel">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Invoice</th><th>Date</th><th>Customer</th><th>Phone</th><th>Total</th><th>Actions</th></tr></thead>
+              <tbody id="invoiceHistory"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section class="view" id="settings">
+        <div class="page-title">
+          <div>
+            <p class="eyebrow">Upper section details</p>
+            <h2>Shop setup, license, address and logo</h2>
+          </div>
+        </div>
+        <section class="panel form-panel">
+          <form id="settingsForm" class="form-grid">
+            <label>Shop Name <input id="shopName" required placeholder="Medical Pharmacy"></label>
+            <label>Drug License Number <input id="licenseNo" placeholder="Drug license number"></label>
+            <label>Phone Number <input id="shopPhone" placeholder="Shop contact number"></label>
+            <label>Invoice Size
+              <select id="invoiceSize">
+                <option value="a5">A5</option>
+                <option value="a4">A4</option>
+                <option value="thermal">Thermal 80mm</option>
+              </select>
+            </label>
+            <label class="wide">Address <textarea id="shopAddress" rows="3" placeholder="Shop full address"></textarea></label>
+            <label class="wide logo-upload">Shop Logo
+              <input id="logoInput" type="file" accept="image/*">
+              <span>Upload logo once. It will appear on screen and printed invoice.</span>
+            </label>
+            <div class="button-row wide">
+              <button type="button" class="ghost danger" id="resetData">Reset All Data</button>
+              <button class="primary" type="submit">Save Shop Setup</button>
+            </div>
+          </form>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="invoiceDialog">
+    <div class="dialog-actions no-print">
+      <button class="ghost" id="shareInvoice">Share</button>
+      <button class="secondary" id="printInvoice">Print / Save PDF</button>
+      <button class="primary" id="closeInvoice">Close</button>
+    </div>
+    <article id="printArea" class="print-area"></article>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
