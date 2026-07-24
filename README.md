@@ -5,19 +5,19 @@ A complete, single-website pharmacy billing and stock management system built wi
 ## Features
 
 - **Dashboard** — total medicines, low/out-of-stock alerts, today's sales, total revenue
-- **New Invoice** — add customer name, phone, address, doctor name, then add any number of medicines (tablets, syrups, injections, etc.) with live stock lookup, quantity, price, discount and tax
+- **New Invoice** — customer name, phone, address, doctor name; add any number of medicines with live stock lookup, per-item GST%, quantity, D.Price (discounted sale price), discount, payment status (Paid/Due/Partial) and billed-by staff name
 - **Sales History** — every completed bill saved and searchable by customer name, phone or invoice number, with re-print/re-download anytime
-- **Inventory** — full medicine list with stock levels, batch numbers, expiry dates, edit and delete
+- **Inventory** — full medicine list with manufacturer, packing, MRP, GST%, stock levels, batch numbers, expiry dates, edit and delete
 - **Purchase Entry** — stock-in from your suppliers; automatically adds to inventory
-- **Shop Settings** — your shop name, Drug License Number, phone, address, GSTIN and logo — all appear on the header and on every printed invoice
-- **Invoice Output** — clean A5-size printable invoice with your logo and shop details; **Print** button (browser print dialog) and **Download PDF** button (saves an actual .pdf file)
+- **Shop Settings** — shop name, tagline, two Drug License numbers, phone, address, GSTIN, PAN, UPI ID (for a Scan-to-Pay QR code), website, and logo — all appear on the header and every printed invoice
+- **Invoice Output** — professional A4 printable invoice matching a standard pharmacy billing format: logo + shop details + license numbers, GSTIN/PAN row, patient/doctor row, itemised table (Sr, Item, Manufacturer, Packing, Batch, Exp, MRP, Qty, D.Price, GST, Amount), CGST/SGST breakdown, Total MRP, Total Saving, Round Off, Net total, Total Outstanding, terms & conditions, signature line, and a Scan-to-Pay QR code if a UPI ID is set. **Print** button (browser print dialog) and **Download PDF** button (saves an actual .pdf file)
 
 ## Getting started (no coding needed)
 
 1. Open `index.html` in any browser (double-click it).
-2. Go to **Shop Settings** and fill in your shop name, Drug License Number, phone, address, and upload your logo. Click **Save Details**.
-3. Go to **Purchase Entry** (or **Inventory → Add Medicine**) to stock your medicines.
-4. Go to **New Invoice** to bill a customer. Add medicines, complete the bill, then **Print** or **Download PDF**.
+2. Go to **Shop Settings** and fill in your shop name, tagline, Drug License Number(s), phone, address, GSTIN, PAN, UPI ID and logo. Click **Save Details**.
+3. Go to **Purchase Entry** (or **Inventory → Add Medicine**) to stock your medicines — including manufacturer, packing, MRP and GST%.
+4. Go to **New Invoice** to bill a customer. Add medicines, set payment status, complete the bill, then **Print** or **Download PDF**.
 
 All your data (medicines, invoices, purchases, shop details, logo) is stored privately in your browser's `localStorage` — it stays on the device you use it on. Use **Shop Settings → Export Backup (JSON)** regularly to keep a safe copy.
 
@@ -43,6 +43,6 @@ README.md    → this file
 
 ## Notes
 
-- The printable invoice is set to A5 paper size by default (change `@page { size: A5; }` in `index.html` if you prefer A4 or A6).
+- The printable invoice is set to A4 paper size by default (change `@page { size: A4; }` in `index.html` if you prefer A5).
 - The "Download PDF" button generates a real `.pdf` file you can WhatsApp or email directly to customers.
 - To reset all data (start fresh), use **Shop Settings → Reset All Data**.
