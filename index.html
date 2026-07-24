@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 :root{
   --bg:#05080d;
@@ -210,11 +211,12 @@ tbody tr:hover{background:rgba(0,200,255,.03);}
 .logo-preview{width:64px;height:64px;object-fit:contain;border-radius:8px;background:#fff;padding:4px;margin:0 auto 10px;}
 
 /* Invoice builder specific */
-.med-row{display:grid;grid-template-columns:2fr 1fr 90px 100px 110px 36px;gap:10px;align-items:end;margin-bottom:10px;}
+.med-row{display:grid;grid-template-columns:2fr 80px 100px 80px 110px 36px;gap:10px;align-items:end;margin-bottom:4px;}
 @media (max-width:900px){.med-row{grid-template-columns:1fr 1fr;}}
 .med-row .field{margin-bottom:0;}
 .remove-row{background:rgba(255,77,109,.1);border:1px solid rgba(255,77,109,.3);color:var(--danger);border-radius:7px;height:40px;display:flex;align-items:center;justify-content:center;}
 .remove-row:hover{background:rgba(255,77,109,.2);}
+.med-meta-caption{font-size:10.5px;color:var(--muted-2);margin:0 0 12px 2px;font-family:var(--font-mono);}
 
 .totals-box{background:var(--bg-2);border:1px solid var(--line);border-radius:10px;padding:18px;margin-top:16px;}
 .totals-row{display:flex;justify-content:space-between;padding:7px 0;font-size:13px;color:var(--muted);}
@@ -222,36 +224,81 @@ tbody tr:hover{background:rgba(0,200,255,.03);}
 .totals-row.grand{border-top:1px solid var(--line);margin-top:8px;padding-top:14px;font-size:16px;}
 .totals-row.grand b{color:var(--cyan);font-size:19px;}
 
-/* ===== INVOICE PRINT DESIGN (A5) ===== */
+/* ===== INVOICE PRINT DESIGN (A4, matches reference layout) ===== */
 .invoice-sheet{
-  background:#fff;color:#1a1a1a;width:420px;margin:0 auto;
-  font-family:'Inter',Arial,sans-serif;border-radius:6px;overflow:hidden;
+  background:#fff;color:#1a1a1a;width:720px;max-width:none;margin:0 auto;
+  font-family:'Inter',Arial,sans-serif;overflow:hidden;
   box-shadow:0 20px 60px rgba(0,0,0,.5);
+  border:1px solid #dfe6ee;
 }
-.inv-head{display:flex;align-items:center;gap:14px;padding:20px 22px 16px;border-bottom:3px solid #0089b3;}
-.inv-logo{width:56px;height:56px;object-fit:contain;flex-shrink:0;}
-.inv-logo-fallback{width:56px;height:56px;border-radius:8px;background:#0089b3;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:20px;flex-shrink:0;font-family:'Orbitron',sans-serif;}
-.inv-shop-name{font-size:17px;font-weight:800;letter-spacing:.3px;color:#0a2540;}
-.inv-shop-meta{font-size:9.5px;color:#5a6b7d;line-height:1.5;margin-top:3px;}
-.inv-badge{margin-left:auto;text-align:right;}
-.inv-badge .tag{font-size:9px;letter-spacing:2px;color:#0089b3;font-weight:700;text-transform:uppercase;}
-.inv-badge .num{font-size:13px;font-weight:800;color:#0a2540;font-family:'Share Tech Mono',monospace;}
-.inv-body{padding:16px 22px;}
-.inv-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:10.5px;margin-bottom:14px;background:#f4f7fa;border-radius:6px;padding:12px;}
-.inv-meta-grid div span{display:block;color:#8493a3;font-size:8.5px;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;}
-.inv-meta-grid div b{color:#0a2540;font-size:11.5px;}
-.inv-table{width:100%;border-collapse:collapse;font-size:10.5px;}
-.inv-table th{text-align:left;padding:7px 6px;background:#0a2540;color:#fff;font-size:8.5px;text-transform:uppercase;letter-spacing:.8px;}
-.inv-table td{padding:7px 6px;border-bottom:1px solid #e8edf2;color:#2a3a4a;}
-.inv-table tr:last-child td{border-bottom:none;}
-.inv-totals{margin-top:10px;margin-left:auto;width:55%;}
-.inv-totals .r{display:flex;justify-content:space-between;font-size:10.5px;padding:4px 0;color:#5a6b7d;}
-.inv-totals .r.grand{border-top:1.5px solid #0a2540;margin-top:4px;padding-top:8px;font-size:13.5px;font-weight:800;color:#0a2540;}
-.inv-foot{padding:12px 22px 20px;text-align:center;}
-.inv-foot .lic{font-size:8.5px;color:#8493a3;margin-bottom:6px;}
-.inv-foot .thanks{font-size:11px;font-weight:700;color:#0089b3;}
-.inv-sign{display:flex;justify-content:space-between;margin-top:26px;padding:0 22px 16px;font-size:9px;color:#8493a3;}
-.inv-sign div{text-align:center;border-top:1px solid #d5dde5;padding-top:5px;width:120px;}
+#invoicePreviewHolder{overflow-x:auto;padding-bottom:4px;}
+.inv-topbar{display:flex;align-items:flex-start;gap:14px;padding:16px 20px;border-bottom:2px solid #0a2540;}
+.inv-brand{display:flex;gap:10px;flex:1;min-width:0;}
+.inv-logo{width:46px;height:46px;object-fit:contain;flex-shrink:0;}
+.inv-logo-fallback{width:46px;height:46px;border-radius:8px;background:#0089b3;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:17px;flex-shrink:0;font-family:'Orbitron',sans-serif;}
+.inv-shop-name{font-size:19px;font-weight:800;color:#0a2540;line-height:1.15;}
+.inv-tagline{font-size:10px;color:#6a7c8f;font-style:italic;margin-top:1px;}
+.inv-address-line{font-size:9.5px;color:#3a4a5a;margin-top:3px;line-height:1.4;}
+.inv-license-line{font-size:8px;color:#0089b3;font-weight:700;margin-top:3px;letter-spacing:.2px;}
+.inv-license-line span.sep{color:#c2ccd6;margin:0 5px;}
+.inv-meta-col{text-align:right;flex-shrink:0;min-width:150px;}
+.inv-inv-title{font-size:15px;font-weight:800;color:#0a2540;font-style:italic;}
+.inv-meta-col .kv{font-size:10px;color:#3a4a5a;margin-top:2px;}
+.inv-meta-col .kv b{color:#0a2540;}
+.inv-qr-col{flex-shrink:0;text-align:center;}
+.inv-qr-col canvas, .inv-qr-col img{width:64px;height:64px;}
+.inv-qr-label{font-size:8px;color:#6a7c8f;margin-top:2px;font-weight:600;}
+
+.inv-gst-row{text-align:center;font-size:9.5px;color:#0089b3;font-weight:700;padding:6px 10px;border-bottom:1px dashed #c2ccd6;}
+.inv-gst-row b{color:#0a2540;}
+.inv-gst-row span.sep{color:#c2ccd6;margin:0 8px;}
+
+.inv-patient-row{
+  display:flex;flex-wrap:wrap;gap:22px;font-size:10.5px;color:#2a3a4a;
+  padding:8px 20px;border-bottom:1px dashed #c2ccd6;background:#f8fafc;
+}
+.inv-patient-row b{color:#0a2540;font-size:9px;text-transform:uppercase;letter-spacing:.4px;margin-right:5px;}
+
+.inv-items-wrap{position:relative;padding:0 20px;}
+.inv-watermark{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:260px;height:260px;background-size:contain;background-repeat:no-repeat;background-position:center;
+  opacity:.06;pointer-events:none;
+}
+.inv-table2{width:100%;border-collapse:collapse;font-size:9.5px;position:relative;z-index:1;}
+.inv-table2 thead th{
+  text-align:left;padding:7px 5px;background:#0a2540;color:#fff;font-size:8px;
+  text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;
+}
+.inv-table2 tbody td{padding:6px 5px;border-bottom:1px solid #eef1f5;color:#2a3a4a;white-space:nowrap;}
+.inv-table2 tbody tr:nth-child(even){background:rgba(0,137,179,.03);}
+.inv-table2 .num{text-align:right;}
+.inv-table2 .center{text-align:center;}
+.inv-table2 .item-name{color:#0089b3;font-weight:600;white-space:normal;}
+
+.inv-footer-grid{display:grid;grid-template-columns:1.5fr .9fr 1fr 1.1fr;gap:0;border-top:2px solid #0a2540;margin-top:6px;}
+.inv-footer-grid > div{padding:12px 16px;border-right:1px solid #eef1f5;}
+.inv-footer-grid > div:last-child{border-right:none;}
+.inv-terms b{font-size:10.5px;color:#0a2540;display:block;margin-bottom:4px;}
+.inv-terms p{font-size:8px;color:#7a8ba0;line-height:1.5;margin-bottom:10px;}
+.inv-sign-row{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;}
+.inv-sign-name{font-size:9px;color:#3a4a5a;font-style:italic;border-bottom:1px solid #c2ccd6;padding-bottom:3px;min-width:70px;text-align:center;}
+.inv-sign-label{font-size:9px;color:#7a8ba0;font-weight:700;}
+
+.inv-footer-grid .r{display:flex;justify-content:space-between;font-size:10px;color:#5a6b7d;padding:3px 0;}
+.inv-footer-grid .r b{color:#0a2540;font-weight:700;}
+
+.inv-net-col .net-label{font-size:12px;font-weight:800;color:#0a2540;}
+.inv-net-col .net-value{font-size:22px;font-weight:900;color:#0089b3;margin:2px 0 8px;}
+.inv-net-col .r{font-size:9px;}
+.inv-net-col .r.outstanding b{color:#ff4d6d;}
+
+.inv-bottom-banner{
+  display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:10px 20px;background:#0a2540;color:#fff;font-size:9.5px;
+}
+.inv-bottom-banner b{color:#fff;}
+.inv-website{font-size:9px;color:#bcd4e6;}
 
 /* ===== PRINT ACCURACY =====
    Printed content is driven purely by document flow (no position:absolute
@@ -275,10 +322,10 @@ tbody tr:hover{background:rgba(0,200,255,.03);}
   .modal-title, #invoiceModal .btn-group{display:none !important;}
   #invoicePreviewHolder{position:static !important;margin:0 !important;}
   .invoice-sheet{
-    box-shadow:none !important;width:130mm;max-width:100%;margin:0 auto;
+    box-shadow:none !important;border:none !important;width:100%;max-width:190mm;margin:0 auto;
   }
-  .inv-table tr, .inv-sign, .inv-head, .inv-foot{page-break-inside:avoid;}
-  @page{size:A5;margin:8mm;}
+  .inv-table2 tr, .inv-sign-row, .inv-topbar, .inv-bottom-banner{page-break-inside:avoid;}
+  @page{size:A4;margin:10mm;}
 }
 /* Keep header/table accent colors true when printed (Chrome/Firefox/Safari) */
 .invoice-sheet, .invoice-sheet *{
@@ -421,16 +468,24 @@ tbody tr:hover{background:rgba(0,200,255,.03);}
             <div class="section-title">Bill Summary</div>
             <div class="row-2">
               <div class="field"><label>Discount (₹)</label><input type="number" id="billDiscount" value="0" min="0"></div>
-              <div class="field"><label>Tax / GST (%)</label><input type="number" id="billTax" value="0" min="0"></div>
+              <div class="field"><label>Payment Status</label>
+                <select id="payStatus"><option>Paid</option><option>Due</option><option>Partial</option></select>
+              </div>
             </div>
-            <div class="field"><label>Payment Mode</label>
-              <select id="payMode"><option>Cash</option><option>UPI</option><option>Card</option><option>Credit / Due</option></select>
+            <div class="row-2">
+              <div class="field"><label>Payment Mode</label>
+                <select id="payMode"><option>Cash</option><option>UPI</option><option>Card</option><option>Credit / Due</option></select>
+              </div>
+              <div class="field"><label>Billed By (optional)</label><input id="billedBy" placeholder="Staff name"></div>
             </div>
             <div class="totals-box">
               <div class="totals-row"><span>Subtotal</span><b id="sumSubtotal">₹0.00</b></div>
+              <div class="totals-row"><span>Total MRP</span><b id="sumMRP">₹0.00</b></div>
+              <div class="totals-row"><span>You Save</span><b id="sumSaving">₹0.00</b></div>
               <div class="totals-row"><span>Discount</span><b id="sumDiscount">− ₹0.00</b></div>
-              <div class="totals-row"><span>Tax</span><b id="sumTax">+ ₹0.00</b></div>
-              <div class="totals-row grand"><span>Grand Total</span><b id="sumGrand">₹0.00</b></div>
+              <div class="totals-row"><span>Total GST (CGST+SGST)</span><b id="sumTax">+ ₹0.00</b></div>
+              <div class="totals-row"><span>Round off</span><b id="sumRound">₹0.00</b></div>
+              <div class="totals-row grand"><span>Net Total</span><b id="sumGrand">₹0.00</b></div>
             </div>
             <div class="btn-group" style="margin-top:16px;">
               <button class="btn btn-primary btn-block" id="completeBillBtn">Complete Bill & Preview</button>
@@ -478,6 +533,10 @@ tbody tr:hover{background:rgba(0,200,255,.03);}
           <div class="field"><label>Medicine Name *</label><input id="purMedName" list="medNameList" placeholder="e.g. Paracetamol 500mg"></div>
           <datalist id="medNameList"></datalist>
           <div class="row-2">
+            <div class="field"><label>Manufacturer</label><input id="purManuf" placeholder="e.g. Sun Pharma"></div>
+            <div class="field"><label>Packing</label><input id="purPacking" placeholder="e.g. 10 Tablet"></div>
+          </div>
+          <div class="row-2">
             <div class="field"><label>Category</label>
               <select id="purCategory"><option>Tablet</option><option>Syrup</option><option>Injection</option><option>Capsule</option><option>Ointment</option><option>Drops</option><option>Other</option></select>
             </div>
@@ -486,12 +545,14 @@ tbody tr:hover{background:rgba(0,200,255,.03);}
           <div class="row-3">
             <div class="field"><label>Quantity *</label><input type="number" id="purQty" min="1" value="1"></div>
             <div class="field"><label>Purchase Price / Unit</label><input type="number" id="purCost" min="0" step="0.01" value="0"></div>
-            <div class="field"><label>Sale Price / Unit *</label><input type="number" id="purPrice" min="0" step="0.01" value="0"></div>
+            <div class="field"><label>MRP / Unit</label><input type="number" id="purMRP" min="0" step="0.01" value="0"></div>
           </div>
-          <div class="row-2">
+          <div class="row-3">
+            <div class="field"><label>Sale (D.) Price / Unit *</label><input type="number" id="purPrice" min="0" step="0.01" value="0"></div>
+            <div class="field"><label>GST %</label><input type="number" id="purGST" min="0" step="0.01" value="5"></div>
             <div class="field"><label>Batch No.</label><input id="purBatch" placeholder="Optional"></div>
-            <div class="field"><label>Expiry Date</label><input type="date" id="purExpiry"></div>
           </div>
+          <div class="field"><label>Expiry Date</label><input type="date" id="purExpiry"></div>
           <button class="btn btn-primary btn-block" id="submitPurchase">Add to Stock</button>
         </div>
         <div class="card">
@@ -513,12 +574,22 @@ tbody tr:hover{background:rgba(0,200,255,.03);}
         <div class="card">
           <div class="section-title">Shop Details</div>
           <div class="field"><label>Pharmacy / Shop Name *</label><input id="setShopName" placeholder="e.g. City Medical Pharmacy"></div>
+          <div class="field"><label>Tagline (optional)</label><input id="setTagline" placeholder="e.g. Your Health Our Priority"></div>
           <div class="row-2">
-            <div class="field"><label>Drug License No. *</label><input id="setLicense" placeholder="e.g. WB-20B/21B-XXXXXX"></div>
-            <div class="field"><label>Phone Number *</label><input id="setPhone" placeholder="+91 XXXXXXXXXX"></div>
+            <div class="field"><label>Drug License No. (20) *</label><input id="setLicense" placeholder="e.g. WB/MSD/NBO/R/793455"></div>
+            <div class="field"><label>Drug License No. (21) — optional</label><input id="setLicense2" placeholder="e.g. WB/MSD/BIO/R/793455"></div>
           </div>
+          <div class="field"><label>Phone Number(s) *</label><input id="setPhone" placeholder="e.g. 9434880573, 8001358535"></div>
           <div class="field"><label>Address *</label><textarea id="setAddress" placeholder="Full shop address"></textarea></div>
-          <div class="field"><label>GSTIN (optional)</label><input id="setGST" placeholder="Optional"></div>
+          <div class="row-2">
+            <div class="field"><label>GSTIN (optional)</label><input id="setGST" placeholder="Optional"></div>
+            <div class="field"><label>PAN (optional)</label><input id="setPAN" placeholder="Optional"></div>
+          </div>
+          <div class="row-2">
+            <div class="field"><label>UPI ID (for Scan-to-Pay QR)</label><input id="setUPI" placeholder="e.g. yourshop@okhdfcbank"></div>
+            <div class="field"><label>Website (optional)</label><input id="setWebsite" placeholder="e.g. www.yourshop.in"></div>
+          </div>
+          <div class="field"><label>Terms & Conditions (shown on invoice)</label><textarea id="setTerms" placeholder="By ordering from us, you agree to..."></textarea></div>
           <button class="btn btn-primary" id="saveSettings">Save Details</button>
         </div>
         <div class="card">
@@ -550,7 +621,7 @@ tbody tr:hover{background:rgba(0,200,255,.03);}
 
 <!-- Invoice Preview Modal -->
 <div class="modal-overlay" id="invoiceModal">
-  <div class="modal-box" style="max-width:460px;">
+  <div class="modal-box" style="max-width:780px;">
     <div class="modal-title">Invoice Preview</div>
     <div id="invoicePreviewHolder"></div>
     <div class="btn-group" style="margin-top:18px;">
@@ -567,6 +638,10 @@ tbody tr:hover{background:rgba(0,200,255,.03);}
     <div class="modal-title">Add Medicine</div>
     <div class="field"><label>Medicine Name *</label><input id="newMedName"></div>
     <div class="row-2">
+      <div class="field"><label>Manufacturer</label><input id="newMedManuf" placeholder="e.g. Sun Pharma"></div>
+      <div class="field"><label>Packing</label><input id="newMedPacking" placeholder="e.g. 10 Tablet"></div>
+    </div>
+    <div class="row-2">
       <div class="field"><label>Category</label>
         <select id="newMedCategory"><option>Tablet</option><option>Syrup</option><option>Injection</option><option>Capsule</option><option>Ointment</option><option>Drops</option><option>Other</option></select>
       </div>
@@ -576,10 +651,12 @@ tbody tr:hover{background:rgba(0,200,255,.03);}
       <div class="field"><label>Stock Quantity</label><input type="number" id="newMedQty" min="0" value="0"></div>
       <div class="field"><label>Expiry Date</label><input type="date" id="newMedExpiry"></div>
     </div>
-    <div class="row-2">
+    <div class="row-3">
       <div class="field"><label>Purchase Price</label><input type="number" id="newMedCost" min="0" step="0.01" value="0"></div>
-      <div class="field"><label>Sale Price *</label><input type="number" id="newMedPrice" min="0" step="0.01" value="0"></div>
+      <div class="field"><label>MRP</label><input type="number" id="newMedMRP" min="0" step="0.01" value="0"></div>
+      <div class="field"><label>Sale (D.) Price *</label><input type="number" id="newMedPrice" min="0" step="0.01" value="0"></div>
     </div>
+    <div class="field"><label>GST %</label><input type="number" id="newMedGST" min="0" step="0.01" value="5"></div>
     <div class="btn-group">
       <button class="btn btn-primary" id="saveNewMed">Save Medicine</button>
       <button class="btn" id="cancelNewMed">Cancel</button>
