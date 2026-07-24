@@ -11,10 +11,12 @@ const DB = {
 
 let state = {
   settings: DB.get(DB.KEYS.settings, {
-    shopName:'', license:'', phone:'', address:'', gst:'', logo:''
+    shopName:'', tagline:'', license:'', license2:'', phone:'', address:'', gst:'', pan:'', upi:'', website:'',
+    terms:"By purchasing from us, you agree to pay within the applicable terms. Unpaid or unlawful orders may be cancelled. Prescription required where applicable. Indian laws apply.",
+    logo:''
   }),
-  inventory: DB.get(DB.KEYS.inventory, []),   // {id,name,category,qty,cost,price,batch,expiry}
-  invoices: DB.get(DB.KEYS.invoices, []),     // {id,no,date,customer,items,subtotal,discount,tax,grand,payMode}
+  inventory: DB.get(DB.KEYS.inventory, []),   // {id,name,manuf,category,packing,qty,cost,price,mrp,gstPct,batch,expiry}
+  invoices: DB.get(DB.KEYS.invoices, []),     // {id,no,date,customer,items,subtotal,totalMrp,saving,discount,gst,cgst,sgst,roundOff,grand,payMode,payStatus,billedBy}
   purchases: DB.get(DB.KEYS.purchases, []),   // {id,date,name,category,qty,cost,price,supplier,batch,expiry}
   counter: DB.get(DB.KEYS.counter, 1)
 };
@@ -88,10 +90,16 @@ function initNav(){
 function initSettingsForm(){
   const s = state.settings;
   document.getElementById('setShopName').value = s.shopName || '';
+  document.getElementById('setTagline').value = s.tagline || '';
   document.getElementById('setLicense').value = s.license || '';
+  document.getElementById('setLicense2').value = s.license2 || '';
   document.getElementById('setPhone').value = s.phone || '';
   document.getElementById('setAddress').value = s.address || '';
   document.getElementById('setGST').value = s.gst || '';
+  document.getElementById('setPAN').value = s.pan || '';
+  document.getElementById('setUPI').value = s.upi || '';
+  document.getElementById('setWebsite').value = s.website || '';
+  document.getElementById('setTerms').value = s.terms || '';
   if(s.logo){ showLogoPreview(s.logo); }
 
   document.getElementById('saveSettings').addEventListener('click', ()=>{
@@ -103,10 +111,16 @@ function initSettingsForm(){
       toast('Shop name, phone & address are required', true); return;
     }
     state.settings.shopName = shopName;
+    state.settings.tagline = document.getElementById('setTagline').value.trim();
     state.settings.license = license;
+    state.settings.license2 = document.getElementById('setLicense2').value.trim();
     state.settings.phone = phone;
     state.settings.address = address;
     state.settings.gst = document.getElementById('setGST').value.trim();
+    state.settings.pan = document.getElementById('setPAN').value.trim();
+    state.settings.upi = document.getElementById('setUPI').value.trim();
+    state.settings.website = document.getElementById('setWebsite').value.trim();
+    state.settings.terms = document.getElementById('setTerms').value.trim();
     persist();
     refreshHeaderBranding();
     renderDashboard();
@@ -182,20 +196,28 @@ function initInventoryView(){
     if(!name){ toast('Medicine name is required', true); return; }
     if(price<=0){ toast('Sale price must be greater than 0', true); return; }
     const med = {
-      id: uid(), name, category: document.getElementById('newMedCategory').value,
+      id: uid(), name,
+      manuf: document.getElementById('newMedManuf').value.trim(),
+      packing: document.getElementById('newMedPacking').value.trim(),
+      category: document.getElementById('newMedCategory').value,
       qty: parseInt(document.getElementById('newMedQty').value)||0,
       cost: parseFloat(document.getElementById('newMedCost').value)||0,
-      price, batch: document.getElementById('newMedBatch').value.trim(),
+      mrp: parseFloat(document.getElementById('newMedMRP').value)||0,
+      price,
+      gstPct: parseFloat(document.getElementById('newMedGST').value)||0,
+      batch: document.getElementById('newMedBatch').value.trim(),
       expiry: document.getElementById('newMedExpiry').value
     };
     state.inventory.push(med);
     persist();
     renderInventoryTable(); renderDashboard(); updateMedNameList();
     closeModal('addMedModal');
-    ['newMedName','newMedBatch'].forEach(id=>document.getElementById(id).value='');
+    ['newMedName','newMedBatch','newMedManuf','newMedPacking'].forEach(id=>document.getElementById(id).value='');
     document.getElementById('newMedQty').value=0;
     document.getElementById('newMedCost').value=0;
+    document.getElementById('newMedMRP').value=0;
     document.getElementById('newMedPrice').value=0;
+    document.getElementById('newMedGST').value=5;
     document.getElementById('newMedExpiry').value='';
     toast('Medicine added to inventory');
   });
@@ -216,10 +238,13 @@ function renderInventoryTable(){
   const rows = [...state.inventory].sort((a,b)=>a.name.localeCompare(b.name)).map(m=>`
     <tr>
       <td><b>${escapeHtml(m.name)}</b></td>
-      <td>${escapeHtml(m.category||'—')}</td>
+      <td>${escapeHtml(m.manuf||'—')}</td>
+      <td>${escapeHtml(m.packing||m.category||'—')}</td>
       <td>${escapeHtml(m.batch||'—')}</td>
       <td>${m.expiry?fmtDate(m.expiry):'—'}</td>
+      <td>${m.mrp?money(m.mrp):'—'}</td>
       <td>${money(m.price)}</td>
+      <td>${m.gstPct?m.gstPct+'%':'—'}</td>
       <td>${stockPill(m.qty)}</td>
       <td>
         <div class="btn-group">
@@ -229,7 +254,7 @@ function renderInventoryTable(){
       </td>
     </tr>`).join('');
   wrap.innerHTML = `<table><thead><tr>
-    <th>Medicine</th><th>Category</th><th>Batch</th><th>Expiry</th><th>Price</th><th>Stock</th><th>Actions</th>
+    <th>Medicine</th><th>Manuf.</th><th>Packing</th><th>Batch</th><th>Expiry</th><th>MRP</th><th>D.Price</th><th>GST</th><th>Stock</th><th>Actions</th>
   </tr></thead><tbody>${rows}</tbody></table>`;
 }
 
@@ -272,6 +297,10 @@ function initPurchaseView(){
     if(qty<=0){ toast('Quantity must be at least 1', true); return; }
     if(price<=0){ toast('Sale price must be greater than 0', true); return; }
     const cost = parseFloat(document.getElementById('purCost').value)||0;
+    const mrp = parseFloat(document.getElementById('purMRP').value)||0;
+    const gstPct = parseFloat(document.getElementById('purGST').value)||0;
+    const manuf = document.getElementById('purManuf').value.trim();
+    const packing = document.getElementById('purPacking').value.trim();
     const category = document.getElementById('purCategory').value;
     const supplier = document.getElementById('purSupplier').value.trim();
     const batch = document.getElementById('purBatch').value.trim();
@@ -282,10 +311,14 @@ function initPurchaseView(){
       existing.qty += qty;
       existing.cost = cost || existing.cost;
       existing.price = price || existing.price;
+      existing.mrp = mrp || existing.mrp;
+      existing.gstPct = gstPct || existing.gstPct;
+      if(manuf) existing.manuf = manuf;
+      if(packing) existing.packing = packing;
       if(batch) existing.batch = batch;
       if(expiry) existing.expiry = expiry;
     } else {
-      state.inventory.push({ id:uid(), name, category, qty, cost, price, batch, expiry });
+      state.inventory.push({ id:uid(), name, manuf, category, packing, qty, cost, mrp, price, gstPct, batch, expiry });
     }
     state.purchases.unshift({ id:uid(), date:new Date().toISOString(), name, category, qty, cost, price, supplier, batch, expiry });
     persist();
@@ -295,9 +328,13 @@ function initPurchaseView(){
     document.getElementById('purSupplier').value='';
     document.getElementById('purBatch').value='';
     document.getElementById('purExpiry').value='';
+    document.getElementById('purManuf').value='';
+    document.getElementById('purPacking').value='';
     document.getElementById('purQty').value=1;
     document.getElementById('purCost').value=0;
+    document.getElementById('purMRP').value=0;
     document.getElementById('purPrice').value=0;
+    document.getElementById('purGST').value=5;
     toast('Stock added: '+name+' (+'+qty+')');
   });
 }
@@ -325,7 +362,6 @@ function initInvoiceBuilder(){
   addMedRow();
   document.getElementById('addMedRow').addEventListener('click', ()=> addMedRow());
   document.getElementById('billDiscount').addEventListener('input', recalcTotals);
-  document.getElementById('billTax').addEventListener('input', recalcTotals);
   document.getElementById('completeBillBtn').addEventListener('click', completeBill);
 }
 
@@ -335,39 +371,51 @@ function addMedRow(){
   const div = document.createElement('div');
   div.className = 'med-row';
   div.id = rowId;
-  const options = state.inventory.map(m=>`<option value="${escapeHtml(m.name)}" data-id="${m.id}" data-price="${m.price}" data-stock="${m.qty}">`).join('');
+  const options = state.inventory.map(m=>`<option value="${escapeHtml(m.name)}">`).join('');
   div.innerHTML = `
     <div class="field"><label>Medicine</label><input class="med-name" list="invMedList_${rowId}" placeholder="Type or select medicine">
       <datalist id="invMedList_${rowId}">${options}</datalist>
     </div>
-    <div class="field"><label>Stock</label><input class="med-stock" value="—" disabled></div>
     <div class="field"><label>Qty</label><input type="number" class="med-qty" value="1" min="1"></div>
-    <div class="field"><label>Price</label><input type="number" class="med-price" value="0" min="0" step="0.01"></div>
+    <div class="field"><label>D.Price</label><input type="number" class="med-price" value="0" min="0" step="0.01"></div>
+    <div class="field"><label>GST%</label><input type="number" class="med-gst" value="0" min="0" step="0.01"></div>
     <div class="field"><label>Total</label><input class="med-total" value="₹0.00" disabled></div>
     <button class="remove-row" title="Remove"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
   `;
+  const caption = document.createElement('div');
+  caption.className = 'med-meta-caption';
+  caption.textContent = 'Select a known medicine to auto-fill manufacturer, packing, MRP, batch & expiry';
   document.getElementById('medRows').appendChild(div);
+  document.getElementById('medRows').appendChild(caption);
 
   const nameInput = div.querySelector('.med-name');
   const qtyInput = div.querySelector('.med-qty');
   const priceInput = div.querySelector('.med-price');
-  const stockInput = div.querySelector('.med-stock');
+  const gstInput = div.querySelector('.med-gst');
 
   nameInput.addEventListener('input', ()=>{
     const med = state.inventory.find(m=>m.name.toLowerCase()===nameInput.value.trim().toLowerCase());
     if(med){
       priceInput.value = med.price;
-      stockInput.value = med.qty + ' avail.';
+      gstInput.value = med.gstPct || 0;
       div.dataset.medId = med.id;
+      div.dataset.manuf = med.manuf || '';
+      div.dataset.packing = med.packing || '';
+      div.dataset.mrp = med.mrp || 0;
+      div.dataset.batch = med.batch || '';
+      div.dataset.expiry = med.expiry || '';
+      caption.textContent = `${med.manuf||'—'} · ${med.packing||med.category||'—'} · MRP ${money(med.mrp||0)} · Batch ${med.batch||'—'} · Stock ${med.qty} avail.`;
     } else {
-      stockInput.value = '—';
       delete div.dataset.medId;
+      div.dataset.manuf=''; div.dataset.packing=''; div.dataset.mrp=0; div.dataset.batch=''; div.dataset.expiry='';
+      caption.textContent = 'Select a known medicine to auto-fill manufacturer, packing, MRP, batch & expiry';
     }
     recalcRow(div); recalcTotals();
   });
-  [qtyInput, priceInput].forEach(inp=> inp.addEventListener('input', ()=>{ recalcRow(div); recalcTotals(); }));
+  [qtyInput, priceInput, gstInput].forEach(inp=> inp.addEventListener('input', ()=>{ recalcRow(div); recalcTotals(); }));
   div.querySelector('.remove-row').addEventListener('click', ()=>{
     div.remove();
+    caption.remove();
     recalcTotals();
   });
   recalcTotals();
@@ -380,21 +428,32 @@ function recalcRow(div){
 }
 
 function recalcTotals(){
-  let subtotal = 0;
+  let subtotal = 0, totalMrp = 0, totalGst = 0;
   document.querySelectorAll('.med-row').forEach(div=>{
     const qty = parseFloat(div.querySelector('.med-qty').value)||0;
     const price = parseFloat(div.querySelector('.med-price').value)||0;
-    subtotal += qty*price;
+    const gstPct = parseFloat(div.querySelector('.med-gst').value)||0;
+    const mrp = parseFloat(div.dataset.mrp)||0;
+    const lineAmount = qty*price;
+    subtotal += lineAmount;
+    totalMrp += qty*mrp;
+    totalGst += lineAmount * (gstPct/100);
   });
   const discount = parseFloat(document.getElementById('billDiscount').value)||0;
-  const taxPct = parseFloat(document.getElementById('billTax').value)||0;
-  const taxAmt = (subtotal-discount) * (taxPct/100);
-  const grand = Math.max(0, subtotal - discount + taxAmt);
+  const preRound = Math.max(0, subtotal - discount + totalGst);
+  const grand = Math.round(preRound);
+  const roundOff = grand - preRound;
+  const saving = Math.max(0, totalMrp - subtotal);
+  const cgst = totalGst/2, sgst = totalGst/2;
+
   document.getElementById('sumSubtotal').textContent = money(subtotal);
+  document.getElementById('sumMRP').textContent = money(totalMrp);
+  document.getElementById('sumSaving').textContent = money(saving);
   document.getElementById('sumDiscount').textContent = '− ' + money(discount);
-  document.getElementById('sumTax').textContent = '+ ' + money(taxAmt);
+  document.getElementById('sumTax').textContent = '+ ' + money(totalGst);
+  document.getElementById('sumRound').textContent = (roundOff>=0?'+ ':'− ') + money(Math.abs(roundOff));
   document.getElementById('sumGrand').textContent = money(grand);
-  return { subtotal, discount, taxAmt, grand };
+  return { subtotal, totalMrp, saving, discount, totalGst, cgst, sgst, roundOff, grand };
 }
 
 function completeBill(){
@@ -407,9 +466,14 @@ function completeBill(){
     const name = div.querySelector('.med-name').value.trim();
     const qty = parseFloat(div.querySelector('.med-qty').value)||0;
     const price = parseFloat(div.querySelector('.med-price').value)||0;
+    const gstPct = parseFloat(div.querySelector('.med-gst').value)||0;
     if(!name || qty<=0 || price<=0) return;
     const medId = div.dataset.medId;
-    items.push({ name, qty, price, total: qty*price, medId: medId||null });
+    items.push({
+      name, qty, price, gstPct, total: qty*price, medId: medId||null,
+      manuf: div.dataset.manuf||'', packing: div.dataset.packing||'',
+      mrp: parseFloat(div.dataset.mrp)||0, batch: div.dataset.batch||'', expiry: div.dataset.expiry||''
+    });
   });
   if(items.length===0){ toast('Add at least one medicine with quantity & price', true); return; }
 
@@ -435,8 +499,13 @@ function completeBill(){
       address: document.getElementById('custAddress').value.trim(),
       doctor: document.getElementById('custDoctor').value.trim()
     },
-    items, subtotal: totals.subtotal, discount: totals.discount, tax: totals.taxAmt, grand: totals.grand,
-    payMode: document.getElementById('payMode').value
+    items,
+    subtotal: totals.subtotal, totalMrp: totals.totalMrp, saving: totals.saving,
+    discount: totals.discount, gst: totals.totalGst, cgst: totals.cgst, sgst: totals.sgst,
+    roundOff: totals.roundOff, grand: totals.grand,
+    payMode: document.getElementById('payMode').value,
+    payStatus: document.getElementById('payStatus').value,
+    billedBy: document.getElementById('billedBy').value.trim()
   };
 
   items.forEach(it=>{
@@ -462,7 +531,8 @@ function resetInvoiceForm(){
   document.getElementById('custAddress').value='';
   document.getElementById('custDoctor').value='';
   document.getElementById('billDiscount').value=0;
-  document.getElementById('billTax').value=0;
+  document.getElementById('billedBy').value='';
+  document.getElementById('payStatus').value='Paid';
   document.getElementById('medRows').innerHTML='';
   addMedRow();
   document.getElementById('nextInvNo').textContent = '#' + String(state.counter).padStart(4,'0');
@@ -474,66 +544,137 @@ function buildInvoiceHTML(inv){
   const s = state.settings;
   const logoBlock = s.logo
     ? `<img class="inv-logo" src="${s.logo}" alt="logo">`
-    : `<div class="inv-logo-fallback">${escapeHtml((s.shopName||'MX').trim().slice(0,2).toUpperCase())}</div>`;
+    : `<div class="inv-logo-fallback">${escapeHtml((s.shopName||'MP').trim().slice(0,2).toUpperCase())}</div>`;
 
-  const itemsRows = inv.items.map(it=>`
+  const licenseParts = [];
+  if(s.license) licenseParts.push('LICENSE 20 : '+escapeHtml(s.license));
+  if(s.license2) licenseParts.push('LICENSE 21 : '+escapeHtml(s.license2));
+  const licenseLine = licenseParts.length ? `<div class="inv-license-line">${licenseParts.join('<span class="sep">|</span>')}</div>` : '';
+
+  const gstPanParts = [];
+  if(s.gst) gstPanParts.push('GSTIN <b>'+escapeHtml(s.gst)+'</b>');
+  if(s.pan) gstPanParts.push('PAN <b>'+escapeHtml(s.pan)+'</b>');
+  const gstPanRow = gstPanParts.length ? `<div class="inv-gst-row">${gstPanParts.join('<span class="sep">|</span>')}</div>` : '';
+
+  const statusColor = inv.payStatus==='Due' ? '#ff4d6d' : (inv.payStatus==='Partial' ? '#ffb347' : '#33a866');
+
+  const itemsRows = inv.items.map((it,i)=>`
     <tr>
-      <td>${escapeHtml(it.name)}</td>
-      <td style="text-align:center;">${it.qty}</td>
-      <td style="text-align:right;">${money(it.price)}</td>
-      <td style="text-align:right;">${money(it.total)}</td>
+      <td class="center">${i+1}</td>
+      <td class="item-name">${escapeHtml(it.name)}</td>
+      <td>${escapeHtml(it.manuf||'—')}</td>
+      <td>${escapeHtml(it.packing||'—')}</td>
+      <td>${escapeHtml(it.batch||'—')}</td>
+      <td>${it.expiry?fmtDate(it.expiry):'—'}</td>
+      <td class="num">${it.mrp?money(it.mrp):'—'}</td>
+      <td class="center">${it.qty}</td>
+      <td class="num">${money(it.price)}</td>
+      <td class="center">${it.gstPct||0}%</td>
+      <td class="num">${money(it.total)}</td>
     </tr>`).join('');
+
+  const watermark = s.logo ? `<div class="inv-watermark" style="background-image:url('${s.logo}')"></div>` : '';
+
+  const termsHtml = s.terms ? `<p>${escapeHtml(s.terms)}</p>` : '';
+
+  const qrBlock = s.upi ? `
+    <div class="inv-qr-col">
+      <div id="qrCodeBox_${inv.id}"></div>
+      <div class="inv-qr-label">Scan to Pay</div>
+    </div>` : '';
 
   return `
   <div class="invoice-sheet">
-    <div class="inv-head">
-      ${logoBlock}
-      <div>
-        <div class="inv-shop-name">${escapeHtml(s.shopName||'Your Pharmacy Name')}</div>
-        <div class="inv-shop-meta">
-          ${escapeHtml(s.address||'Shop address not set')}<br>
-          Ph: ${escapeHtml(s.phone||'—')} ${s.license?(' &nbsp;·&nbsp; Lic. No: '+escapeHtml(s.license)):''}${s.gst?(' &nbsp;·&nbsp; GSTIN: '+escapeHtml(s.gst)):''}
+    <div class="inv-topbar">
+      <div class="inv-brand">
+        ${logoBlock}
+        <div>
+          <div class="inv-shop-name">${escapeHtml(s.shopName||'Your Pharmacy Name')}</div>
+          ${s.tagline?`<div class="inv-tagline">${escapeHtml(s.tagline)}</div>`:''}
+          <div class="inv-address-line">${escapeHtml(s.address||'Shop address not set')}</div>
+          <div class="inv-address-line">M. ${escapeHtml(s.phone||'—')}</div>
+          ${licenseLine}
         </div>
       </div>
-      <div class="inv-badge">
-        <div class="tag">Invoice</div>
-        <div class="num">#${inv.no}</div>
-        <div style="font-size:9px;color:#8493a3;margin-top:2px;">${fmtDateTime(inv.date)}</div>
+      <div class="inv-meta-col">
+        <div class="inv-inv-title">Invoice</div>
+        <div class="kv"><b>Bill No:</b> ${inv.no}</div>
+        <div class="kv" style="color:${statusColor};font-weight:800;">Payment: ${escapeHtml(inv.payStatus||'Paid')}</div>
+        <div class="kv">${fmtDateTime(inv.date)}</div>
       </div>
+      ${qrBlock}
     </div>
-    <div class="inv-body">
-      <div class="inv-meta-grid">
-        <div><span>Customer</span><b>${escapeHtml(inv.customer.name)}</b></div>
-        <div><span>Phone</span><b>${escapeHtml(inv.customer.phone||'—')}</b></div>
-        <div><span>Address</span><b>${escapeHtml(inv.customer.address||'—')}</b></div>
-        <div><span>Doctor</span><b>${escapeHtml(inv.customer.doctor||'—')}</b></div>
-      </div>
-      <table class="inv-table">
-        <thead><tr><th>Medicine</th><th style="text-align:center;">Qty</th><th style="text-align:right;">Price</th><th style="text-align:right;">Amount</th></tr></thead>
+
+    ${gstPanRow}
+
+    <div class="inv-patient-row">
+      <span><b>Patient Name</b>${escapeHtml(inv.customer.name)}</span>
+      <span><b>Mobile</b>${escapeHtml(inv.customer.phone||'—')}</span>
+      <span><b>Ref. By</b>${inv.customer.doctor?('Dr. '+escapeHtml(inv.customer.doctor)):'—'}</span>
+    </div>
+
+    <div class="inv-items-wrap">
+      ${watermark}
+      <table class="inv-table2">
+        <thead><tr>
+          <th>Sr.</th><th>Item Name</th><th>Manuf.</th><th>Packing</th><th>Batch</th><th>Exp</th>
+          <th>MRP</th><th>Qty.</th><th>D.Price</th><th>GST</th><th>Amount</th>
+        </tr></thead>
         <tbody>${itemsRows}</tbody>
       </table>
-      <div class="inv-totals">
-        <div class="r"><span>Subtotal</span><span>${money(inv.subtotal)}</span></div>
-        <div class="r"><span>Discount</span><span>− ${money(inv.discount)}</span></div>
-        <div class="r"><span>Tax</span><span>+ ${money(inv.tax)}</span></div>
-        <div class="r grand"><span>Total</span><span>${money(inv.grand)}</span></div>
+    </div>
+
+    <div class="inv-footer-grid">
+      <div class="inv-terms">
+        <b>Terms &amp; Conditions</b>
+        ${termsHtml}
+        <div class="inv-sign-row">
+          <div class="inv-sign-name">${escapeHtml(inv.billedBy||'')}</div>
+          <div class="inv-sign-label">Sign</div>
+        </div>
+      </div>
+      <div class="inv-gst-col">
+        <div class="r"><span>CGST</span><b>${money(inv.cgst)}</b></div>
+        <div class="r"><span>SGST</span><b>${money(inv.sgst)}</b></div>
+        <div class="r"><span>Total GST</span><b>${money(inv.gst)}</b></div>
+      </div>
+      <div class="inv-item-col">
+        <div class="r"><span>Total Item(s)</span><b>${inv.items.length}</b></div>
+        <div class="r"><span>Total MRP</span><b>${money(inv.totalMrp)}</b></div>
+        <div class="r"><span>Round off</span><b>${inv.roundOff>=0?'+':'−'} ${money(Math.abs(inv.roundOff))}</b></div>
+      </div>
+      <div class="inv-net-col">
+        <div class="net-label">Net</div>
+        <div class="net-value">${money(inv.grand)}</div>
+        <div class="r"><span>Total Saving</span><b>${money(inv.saving)}</b></div>
+        <div class="r"><span>Billed By</span><b>${escapeHtml(inv.billedBy||'—')}</b></div>
+        <div class="r outstanding"><span>Total Outstanding</span><b>${inv.payStatus==='Paid'?money(0):money(inv.grand)}</b></div>
       </div>
     </div>
-    <div class="inv-sign">
-      <div>Customer Signature</div>
-      <div>Authorised Signatory</div>
-    </div>
-    <div class="inv-foot">
-      <div class="lic">${s.license?('Drug License No: '+escapeHtml(s.license)+' · '):''}Payment: ${escapeHtml(inv.payMode)} · This is a computer-generated invoice.</div>
-      <div class="thanks">Thank you for choosing ${escapeHtml(s.shopName||'us')}! Get well soon.</div>
+
+    <div class="inv-bottom-banner">
+      <div>Welcome to <b>${escapeHtml(s.shopName||'us')}</b>! Thank you for choosing us. We're committed to providing genuine medicines with trusted, convenient, and reliable service.</div>
+      ${s.website?`<div class="inv-website">${escapeHtml(s.website)}</div>`:''}
     </div>
   </div>`;
+}
+
+function renderInvoiceQr(inv){
+  if(!state.settings.upi || typeof QRCode === 'undefined') return;
+  const box = document.getElementById('qrCodeBox_'+inv.id);
+  if(!box) return;
+  box.innerHTML = '';
+  const upiUrl = `upi://pay?pa=${encodeURIComponent(state.settings.upi)}&pn=${encodeURIComponent(state.settings.shopName||'Pharmacy')}&am=${inv.grand.toFixed(2)}&cu=INR&tn=${encodeURIComponent('Invoice '+inv.no)}`;
+  try{
+    new QRCode(box, { text: upiUrl, width:64, height:64, correctLevel: QRCode.CorrectLevel.M });
+  }catch(e){ console.error('QR generation failed', e); }
 }
 
 let currentInvoiceForPdf = null;
 function showInvoicePreview(inv){
   currentInvoiceForPdf = inv;
   document.getElementById('invoicePreviewHolder').innerHTML = buildInvoiceHTML(inv);
+  renderInvoiceQr(inv);
   openModal('invoiceModal');
 }
 
@@ -553,16 +694,16 @@ async function downloadInvoicePdf(){
   const node = document.getElementById('invoicePreviewHolder').querySelector('.invoice-sheet');
   toast('Preparing PDF…');
   try{
-    const canvas = await html2canvas(node, { scale:3, backgroundColor:'#ffffff' });
+    const canvas = await html2canvas(node, { scale:2.5, backgroundColor:'#ffffff', useCORS:true });
     const imgData = canvas.toDataURL('image/png');
     const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF({ unit:'mm', format:'a5' });
+    const pdf = new jsPDF({ unit:'mm', format:'a4' });
     const pageW = pdf.internal.pageSize.getWidth();
     const pageH = pdf.internal.pageSize.getHeight();
-    const imgW = pageW - 12;
+    const imgW = pageW - 16;
     const imgH = (canvas.height * imgW) / canvas.width;
-    const finalH = Math.min(imgH, pageH - 12);
-    pdf.addImage(imgData, 'PNG', 6, 6, imgW, finalH);
+    const finalH = Math.min(imgH, pageH - 16);
+    pdf.addImage(imgData, 'PNG', 8, 8, imgW, finalH);
     pdf.save('Invoice-'+currentInvoiceForPdf.no+'.pdf');
     toast('PDF downloaded');
   }catch(err){
@@ -603,7 +744,7 @@ function renderHistoryTable(){
       <td>${fmtDate(inv.date)}</td>
       <td><b>${escapeHtml(inv.customer.name)}</b><br><span style="color:var(--muted);font-size:11px;">${escapeHtml(inv.customer.phone||'—')}</span></td>
       <td>${inv.items.length} item(s)</td>
-      <td><span class="pill pill-sale">${escapeHtml(inv.payMode)}</span></td>
+      <td><span class="pill pill-sale">${escapeHtml(inv.payMode)}</span> <span class="pill ${inv.payStatus==='Due'?'pill-out':(inv.payStatus==='Partial'?'pill-low':'pill-ok')}">${escapeHtml(inv.payStatus||'Paid')}</span></td>
       <td><b>${money(inv.grand)}</b></td>
       <td><button class="btn btn-sm" onclick="viewInvoice('${inv.id}')">View / Print</button></td>
     </tr>`).join('');
